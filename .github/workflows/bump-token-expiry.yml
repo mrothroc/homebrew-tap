@@ -1,7 +1,8 @@
 # Opens an issue a month before HOMEBREW_BUMP_TOKEN expires, and closes it once the
 # secret holds a token that is not about to expire. The expiry is read from the token
 # itself (GitHub returns it on every API response), so nothing records a date that
-# goes stale when the token is rotated.
+# goes stale when the token is rotated. Logs and issues here are public, so they say
+# only whether expiry is inside the warning window, never the date or days left.
 name: bump token expiry
 
 on:
@@ -60,27 +61,28 @@ jobs:
             exit 1
           fi
           days_left=$(( ($(date -u -d "$expiry" +%s) - $(date -u +%s)) / 86400 ))
-          echo "HOMEBREW_BUMP_TOKEN expires $expiry: $days_left days left, warning at $WARN_DAYS."
 
           title="Rotate HOMEBREW_BUMP_TOKEN before it expires"
           open=$(gh issue list --state open --limit 200 --json number,title |
             jq -r --arg title "$title" '.[] | select(.title == $title) | .number')
 
           if [ "$days_left" -gt "$WARN_DAYS" ]; then
+            echo "HOMEBREW_BUMP_TOKEN is valid and has more than $WARN_DAYS days left."
             for number in $open; do
-              gh issue close "$number" --comment "The token now expires $expiry, $days_left days away."
+              gh issue close "$number" --comment "HOMEBREW_BUMP_TOKEN now has more than $WARN_DAYS days left."
             done
             exit 0
           fi
+          echo "HOMEBREW_BUMP_TOKEN expires within $WARN_DAYS days."
           if [ -n "$open" ]; then
             echo "Issue #$open is already open."
             exit 0
           fi
           gh issue create --title "$title" --body-file - <<EOF
-          HOMEBREW_BUMP_TOKEN expires **$expiry** ($days_left days). When it does, autobump stops opening pull requests for new mixlab releases.
+          HOMEBREW_BUMP_TOKEN expires within $WARN_DAYS days. When it does, autobump stops opening pull requests for new mixlab releases.
 
           1. Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: resource owner \`mrothroc\`, **Only select repositories** → \`mrothroc/homebrew-tap\`, Contents and Pull requests **Read and write**, nothing else.
           2. \`gh secret set HOMEBREW_BUMP_TOKEN -R mrothroc/homebrew-tap\` and paste it at the prompt.
-          3. \`gh workflow run bump-token-expiry.yml -R mrothroc/homebrew-tap\`. It closes this issue once it sees the new expiry.
+          3. \`gh workflow run bump-token-expiry.yml -R mrothroc/homebrew-tap\`. It closes this issue once the new token has more than $WARN_DAYS days left.
           4. Delete the old token from the same settings page.
           EOF
