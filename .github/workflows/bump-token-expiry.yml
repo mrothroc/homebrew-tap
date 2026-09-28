@@ -1,0 +1,86 @@
+# Opens an issue a month before HOMEBREW_BUMP_TOKEN expires, and closes it once the
+# secret holds a token that is not about to expire. The expiry is read from the token
+# itself (GitHub returns it on every API response), so nothing records a date that
+# goes stale when the token is rotated.
+name: bump token expiry
+
+on:
+  schedule:
+    # Mondays at 2:40 UTC
+    - cron: 40 2 * * 1
+  workflow_dispatch:
+    inputs:
+      warn_days:
+        description: Open the issue when this many days or fewer remain
+        default: "30"
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check HOMEBREW_BUMP_TOKEN expiry
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write # open and close the rotation issue
+    steps:
+      - name: Check HOMEBREW_BUMP_TOKEN expiry
+        # No -x: the token must not be echoed.
+        shell: bash -euo pipefail {0}
+        env:
+          BUMP_TOKEN: ${{ secrets.HOMEBREW_BUMP_TOKEN }}
+          WARN_DAYS: ${{ inputs.warn_days || '30' }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! [[ "$WARN_DAYS" =~ ^[0-9]+$ ]]; then
+            echo "::error::warn_days must be a whole number of days, got '$WARN_DAYS'"
+            exit 1
+          fi
+          if [ -z "$BUMP_TOKEN" ]; then
+            echo "::error::The HOMEBREW_BUMP_TOKEN secret is not set; autobump cannot open pull requests."
+            exit 1
+          fi
+
+          # The token goes to curl on stdin, never on the command line.
+          headers=$(mktemp)
+          status=$(curl -sS -o /dev/null -D "$headers" -w '%{http_code}' -H @- \
+            "https://api.github.com/repos/$GH_REPO" <<<"Authorization: Bearer $BUMP_TOKEN")
+          if [ "$status" != 200 ]; then
+            echo "::error::GitHub rejected HOMEBREW_BUMP_TOKEN (HTTP $status): it has expired or been revoked. Replace it as the README describes."
+            exit 1
+          fi
+          expiry=$(tr -d '\r' <"$headers" |
+            awk -F': ' 'tolower($1) == "github-authentication-token-expiration" { print $2 }')
+          if [ -z "$expiry" ]; then
+            echo "::error::GitHub reported no expiry for HOMEBREW_BUMP_TOKEN. It should be a fine-grained token with an expiration date."
+            exit 1
+          fi
+          days_left=$(( ($(date -u -d "$expiry" +%s) - $(date -u +%s)) / 86400 ))
+          echo "HOMEBREW_BUMP_TOKEN expires $expiry: $days_left days left, warning at $WARN_DAYS."
+
+          title="Rotate HOMEBREW_BUMP_TOKEN before it expires"
+          open=$(gh issue list --state open --limit 200 --json number,title |
+            jq -r --arg title "$title" '.[] | select(.title == $title) | .number')
+
+          if [ "$days_left" -gt "$WARN_DAYS" ]; then
+            for number in $open; do
+              gh issue close "$number" --comment "The token now expires $expiry, $days_left days away."
+            done
+            exit 0
+          fi
+          if [ -n "$open" ]; then
+            echo "Issue #$open is already open."
+            exit 0
+          fi
+          gh issue create --title "$title" --body-file - <<EOF
+          HOMEBREW_BUMP_TOKEN expires **$expiry** ($days_left days). When it does, autobump stops opening pull requests for new mixlab releases.
+
+          1. Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: resource owner \`mrothroc\`, **Only select repositories** → \`mrothroc/homebrew-tap\`, Contents and Pull requests **Read and write**, nothing else.
+          2. \`gh secret set HOMEBREW_BUMP_TOKEN -R mrothroc/homebrew-tap\` and paste it at the prompt.
+          3. \`gh workflow run bump-token-expiry.yml -R mrothroc/homebrew-tap\`. It closes this issue once it sees the new expiry.
+          4. Delete the old token from the same settings page.
+          EOF

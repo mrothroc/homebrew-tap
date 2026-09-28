@@ -22,3 +22,9 @@ tap workflows. A daily autobump opens a pull request when mixlab publishes a new
 release. `brew test-bot` audits it, builds it from source, runs `brew test`, and builds
 bottles on macOS 15 and 26; `brew pr-pull` then publishes it with those bottles. Pull
 requests that change the formula go through the same checks.
+
+Autobump opens its pull requests with the `HOMEBREW_BUMP_TOKEN` secret, a fine-grained
+token limited to this repository's contents and pull requests; pull requests opened
+with a workflow's default token would not trigger the tests. A weekly check reads the
+token's expiry from GitHub and opens an issue with rotation steps once 30 days or fewer
+remain, then closes it when it sees the replacement.
