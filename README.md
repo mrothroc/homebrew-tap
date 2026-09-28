@@ -9,16 +9,16 @@ brew install mrothroc/tap/mixlab
 brew trust mrothroc/tap
 ```
 
-The first command builds mixlab from source on macOS and installs MLX as a
-dependency. The second lets a plain `brew upgrade` include mixlab: Homebrew 7 loads
-formulae from a tap you have not trusted only when a command names them in full, so
-without it, upgrade with `brew upgrade mrothroc/tap/mixlab`.
+The first command installs mixlab and MLX. On macOS 15 and 26 it pours a prebuilt
+bottle; elsewhere, or when Homebrew's MLX is outside the range mixlab was tested
+against, it builds from source. The second lets a plain `brew upgrade` include mixlab:
+Homebrew 7 loads formulae from a tap you have not trusted only when a command names
+them in full, so without it, upgrade with `brew upgrade mrothroc/tap/mixlab`.
 
-## Do not edit here
+## How releases arrive
 
-`Formula/mixlab.rb` is rendered from
-[`packaging/homebrew/mixlab.rb`](https://github.com/mrothroc/mixlab/blob/main/packaging/homebrew/mixlab.rb)
-and pushed by that repository's publish workflow when a release is published, after
-`brew audit --strict`, a from-source install and `brew test` pass. Changes made
-directly in this repository are overwritten by the next release, so open issues and
-pull requests against [mrothroc/mixlab](https://github.com/mrothroc/mixlab) instead.
+This repository is the source of the formula, maintained with Homebrew's standard
+tap workflows. A daily autobump opens a pull request when mixlab publishes a new
+release. `brew test-bot` audits it, builds it from source, runs `brew test`, and builds
+bottles on macOS 15 and 26; `brew pr-pull` then publishes it with those bottles. Pull
+requests that change the formula go through the same checks.
