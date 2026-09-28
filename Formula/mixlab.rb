@@ -12,6 +12,13 @@ class Mixlab < Formula
     strategy :github_latest
   end
 
+  bottle do
+    root_url "https://github.com/mrothroc/homebrew-tap/releases/download/mixlab-0.118.0"
+    rebuild 1
+    sha256 cellar: :any, arm64_tahoe:   "43eb845d9d519fddf8ede98531e7107fd6068e92a5e9231a7f067a12cd3a7bb3"
+    sha256 cellar: :any, arm64_sequoia: "92bd9e7d249777b1dfd5f580f4314d1ec1ac37a978b4f7021c583a3c850bc489"
+  end
+
   # Homebrew has no versioned mlx formula and depends_on takes no version
   # predicate, so the tested range is enforced here. MLX 0.32.1 changed gather
   # VJP semantics under a patch bump and silently broke MoE and bf16 training, so
