@@ -62,10 +62,14 @@ class Mixlab < Formula
     ENV.append "CGO_CXXFLAGS", "-I#{mlx}/include -std=c++20"
     ENV.append "CGO_LDFLAGS", "-L#{mlx}/lib -Wl,-rpath,#{mlx}/lib"
     system "go", "build", *std_go_args(tags: "mlx"), "./cmd/mixlab"
+    # mixlab-cluster links no MLX. cgo stays on for its default macOS Keychain
+    # key storage; without cgo only file-backed keys would be available.
+    system "go", "build", *std_go_args(output: bin/"mixlab-cluster"), "./cmd/mixlab-cluster"
   end
 
   # Runs without a GPU: the version the linker stamped, then a config parsed and
-  # lowered to IR, which also proves the MLX library loads.
+  # lowered to IR, which also proves the MLX library loads, then a cluster
+  # identity created offline.
   test do
     assert_match "mixlab v#{version} ", shell_output("#{bin}/mixlab -version") unless version.head?
     (testpath/"model.json").write <<~JSON
@@ -73,5 +77,13 @@ class Mixlab < Formula
        "blocks": [{"type": "plain", "heads": 2}], "training": {"batch_tokens": 4}}
     JSON
     assert_match "valid config", shell_output("#{bin}/mixlab -mode validate -config #{testpath}/model.json")
+
+    # Creates a cluster identity offline: no socket is opened and file-backed
+    # keys keep the test out of the Keychain.
+    assert_match "mixlab-cluster v#{version} ", shell_output("#{bin}/mixlab-cluster -version") unless version.head?
+    state = testpath.realpath/"cluster-state"
+    init = JSON.parse(shell_output("#{bin}/mixlab-cluster init -state-home #{state} -key-backend file"))
+    assert_match(/\A\h{32}\z/, init["cluster"])
+    assert_equal %w[authority controller coordinator], init["principals"].map { |p| p["role"] }.sort
   end
 end
