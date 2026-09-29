@@ -45,6 +45,18 @@ class Mixlab < Formula
   end
 
   def install
+    # The constants above duplicate the source's record of the tested range,
+    # because pour_bottle? runs without the source. Refuse to build when they
+    # disagree, so a release that moves the range cannot ship a stale gate.
+    recorded = (buildpath/"packaging/mlx-tested-range.txt").read
+    { "minimum" => MLX_TESTED_MINIMUM, "below" => MLX_TESTED_BELOW }.each do |name, constant|
+      value = recorded[/^\s*#{name}\s*=\s*(\S+)\s*$/, 1]
+      next if value == constant
+
+      odie "MLX_TESTED_#{name.upcase} is #{constant} but packaging/mlx-tested-range.txt says #{value.inspect}; " \
+           "update the formula constants to match."
+    end
+
     unless self.class.mlx_tested?
       odie <<~EOS
         mixlab #{version} is tested against MLX >=#{MLX_TESTED_MINIMUM} <#{MLX_TESTED_BELOW}, but Homebrew has mlx #{Formula["mlx"].version}.
