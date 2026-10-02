@@ -63,3 +63,28 @@ jobs:
         uses: Homebrew/actions/git-try-push@e99025eb970cfa124b8284a35463d87426917478 # 2026.09.28.1
         with:
           branch: main
+
+      # pr-pull re-applies the pull request's commits to main, and GitHub then
+      # closes the pull request from the pushed commit, a moment after the push.
+      # It never counts as merged, so GitHub never offers to delete the branch.
+      - name: Delete pull request branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PULL_REQUEST: ${{ inputs.pull_request }}
+        run: |
+          for _ in {1..12}; do
+            pr="$(gh pr view "$PULL_REQUEST" --repo "$GITHUB_REPOSITORY" \
+              --json headRefName,isCrossRepository,state)"
+            [[ "$(jq -r .state <<<"$pr")" != "OPEN" ]] && break
+            sleep 5
+          done
+          branch="$(jq -r .headRefName <<<"$pr")"
+          if [[ "$(jq -r .isCrossRepository <<<"$pr")" != "false" || "$branch" == "main" ]]; then
+            echo "Not deleting $branch: it is not a branch of this repository."
+            exit 0
+          fi
+          if [[ "$(jq -r .state <<<"$pr")" == "OPEN" ]]; then
+            echo "::warning::Pull request $PULL_REQUEST is still open after the push; leaving $branch."
+            exit 0
+          fi
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/$branch"
