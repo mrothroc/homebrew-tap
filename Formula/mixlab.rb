@@ -13,9 +13,9 @@ class Mixlab < Formula
   end
 
   bottle do
-    root_url "https://github.com/mrothroc/homebrew-tap/releases/download/mixlab-0.132.1"
-    sha256 cellar: :any, arm64_tahoe:   "fbf83b3cfa0d05b582893e6827041c2a79cc8070cffcf3706604e7f4b010dcfa"
-    sha256 cellar: :any, arm64_sequoia: "5997fc30c206063e6e10a3902506fbe7fde169adcfe052cabbe4cf6d87ab5bde"
+    root_url "https://github.com/mrothroc/homebrew-tap/releases/download/mixlab-0.132.2"
+    sha256 cellar: :any, arm64_tahoe:   "410797b378c64b14cb3d4a800ad53e0ea113394de49b085a69b194ca0c2f6003"
+    sha256 cellar: :any, arm64_sequoia: "db440d1120d9555697c2ccc4f293e7ad9344174ec1577ec5139052eb322cc917"
   end
 
   # Homebrew has no versioned mlx formula and depends_on takes no version
