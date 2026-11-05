@@ -1,8 +1,8 @@
 class Mailpipe < Formula
   desc "Reviewed Microsoft 365 mailbox processing for agents"
   homepage "https://github.com/mrothroc/mailpipe"
-  url "https://github.com/mrothroc/mailpipe/archive/refs/tags/v0.2.1.tar.gz"
-  sha256 "f9635836f44e6d30009437873001c4134f27d2c17520ae4c9a3ae1a36181b955"
+  url "https://github.com/mrothroc/mailpipe/archive/refs/tags/v0.2.2.tar.gz"
+  sha256 "df2f94079f1fdda5c846b71157f91c85f7bc66003bd63a82d85d653601a9db91"
   license "MIT"
 
   livecheck do
