@@ -1,6 +1,6 @@
 cask "mixlab-signed" do
-  version "0.133.0"
-  sha256 "5cc7c12088ad30c8e1ac904302cf91ac375a53a7501969e91b444e7348dce7f1"
+  version "0.134.0"
+  sha256 "d68abf768806e758ff8dc1f2b84e7b8e792e08b6eaee5f59d84b2c3986e2c096"
 
   url "https://github.com/mrothroc/mixlab/releases/download/v#{version}/mixlab-v#{version}-macos-arm64.dmg"
   name "Mixlab"
